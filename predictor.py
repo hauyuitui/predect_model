@@ -13,36 +13,23 @@ import shap
 import matplotlib.pyplot as plt
 import io
 from PIL import Image
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP  # 新增：精准控制小数精度
 
-# ===================== 全局配置与常量定义（优化：提取常量，方便维护） =====================
-# 图表配置
+# 简化字体配置（仅解决负号显示，无需中文）
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 150
-plt.rcParams['figure.figsize'] = (12, 4)
 
-# 模型文件路径（提取常量，方便修改）
-MODEL_PATH = 'GBD.pkl'
+# 加载模型
+model = joblib.load('GBD.pkl')
 
-# 特征配置（包含名称、中文含义、单位，方便后续扩展）
-FEATURE_CONFIG = {
-    "AGE": {"cn_name": "年龄", "unit": "", "min": 18, "max": 120, "is_float": False},
-    "ALB": {"cn_name": "白蛋白", "unit": "g/L", "min": 0, "max": 9999, "is_float": False},
-    "GLO": {"cn_name": "球蛋白", "unit": "g/L", "min": 0, "max": 9999, "is_float": False},
-    "FBG": {"cn_name": "空腹血糖", "unit": "mmol/L", "min": 0.0, "max": 9999.9, "is_float": True},
-    "SBP": {"cn_name": "收缩压", "unit": "mmHg", "min": 0.0, "max": 9999.9, "is_float": True},
-    "AST": {"cn_name": "谷草转氨酶", "unit": "U/L", "min": 0, "max": 9999, "is_float": False},
-    "DBP": {"cn_name": "舒张压", "unit": "mmHg", "min": 0.0, "max": 9999.9, "is_float": True},
-    "BUN": {"cn_name": "血清尿素氮", "unit": "mmol/L", "min": 0, "max": 9999, "is_float": False},
-    "BMI": {"cn_name": "体质指数", "unit": "", "min": 0, "max": 9999, "is_float": False}
-}
-FEATURE_NAMES = list(FEATURE_CONFIG.keys())
+# 特征名：医学通用英文缩写
+feature_names = [
+    "AGE", "ALB", "GLO", "FPG", "SBP", 
+    "AST", "DBP", "BUN", "BMI"    
+]
 
-# 岗位配置（直接显示中文，无需数字映射，优化：提升用户操作便捷性）
-JOB_OPTIONS = ["机务人员", "车务人员", "电务供电人员", "工务人员", "行政及其他人员"]
-
-# ========== 岗位-指标-阈值建议字典（保留原内容，无修改） ==========
+# ========== 岗位-指标-阈值建议字典 ==========
 job_advice_dict = {
     "机务人员": {
         "BMI": {
@@ -426,312 +413,199 @@ job_advice_dict = {
     }
 }
 
-# ===================== 通用函数封装（优化：减少冗余代码，提升可维护性） =====================
-def load_model_safely(model_path):
-    """安全加载模型，添加异常捕获"""
-    try:
-        model = joblib.load(model_path)
-        return model, None
-    except FileNotFoundError:
-        return None, f"模型文件未找到，请确认 {model_path} 存在于当前目录下。"
-    except Exception as e:
-        return None, f"模型加载失败：{str(e)}"
+# 岗位名称映射
+job_name_map = {
+    0: "机务人员",
+    1: "车务人员",
+    2: "电务供电人员",
+    3: "工务人员",
+    4: "行政及其他人员"
+}
 
-def validate_inputs(input_data):
-    """校验输入数据的合法性"""
-    errors = []
-    for feat_name, feat_value in input_data.items():
-        config = FEATURE_CONFIG[feat_name]
-        if feat_value < config["min"] or feat_value > config["max"]:
-            errors.append(
-                f"{config['cn_name']}（{feat_name}）输入异常，应在 {config['min']} ~ {config['max']} {config['unit']} 范围内。"
-            )
-    return errors
+# StreamLit界面（输入框保留中文+英文缩写）
+st.title("动脉硬化预测器")
 
-def display_indicator_advice(current_job, indicator, value, advice_dict):
-    """统一展示单个指标的个性化建议"""
-    if indicator not in advice_dict[current_job]:
-        return
-    indicator_advice = advice_dict[current_job][indicator]
-    st.markdown(f"### {FEATURE_CONFIG.get(indicator, {'cn_name': indicator})['cn_name']}（{indicator}）建议")
-    
-    # 针对不同指标的阈值判断
-    if indicator == "BMI":
-        if value < 18.5:
-            st.markdown(indicator_advice["<18.5"])
-        elif 18.5 <= value < 24:
-            st.markdown(indicator_advice["18.5-24"])
-        elif 24 <= value < 28:
-            st.markdown(indicator_advice["24-28"])
-        else:
-            st.markdown(indicator_advice["≥28"])
-    elif indicator == "ALB":
-        if value < 40:
-            st.markdown(indicator_advice["<40"])
-        elif 40 <= value <= 55:
-            st.markdown(indicator_advice["40-55"])
-        else:
-            st.markdown(indicator_advice[">55"])
-    elif indicator == "GLO":
-        if value < 20:
-            st.markdown(indicator_advice["<20"])
-        elif 20 <= value <= 35:
-            st.markdown(indicator_advice["20-35"])
-        else:
-            st.markdown(indicator_advice[">35"])
-    elif indicator == "FBG":
-        if value < 6.1:
-            st.markdown(indicator_advice["<6.1"])
-        elif 6.1 <= value < 7.0:
-            st.markdown(indicator_advice["6.1-7.0"])
-        else:
-            st.markdown(indicator_advice["≥7.0"])
-    elif indicator == "AST":
-        if value <= 40:
-            st.markdown(indicator_advice["≤40"])
-        else:
-            st.markdown(indicator_advice[">40"])
-    elif indicator == "BUN":
-        if value < 2.9:
-            st.markdown(indicator_advice["<2.9"])
-        elif 2.9 <= value <= 8.2:
-            st.markdown(indicator_advice["2.9-8.2"])
-        else:
-            st.markdown(indicator_advice[">8.2"])
-    # 添加分隔线，提升可读性
-    st.divider()
+# 输入框
+job_code = st.selectbox("岗位：", options=[0, 1, 2, 3, 4], format_func=lambda x: job_name_map[x])
+AGE = st.number_input("年龄(Age):", min_value=0, max_value=120, value=0)
+ALB = st.number_input("白蛋白(ALB):", min_value=0, max_value=70, value=0, step=1)
+GLO = st.number_input("球蛋白(GLO):", min_value=0, max_value=70, value=0, step=1)
+FBG = st.number_input("空腹血糖(FBG):", min_value=0.0, max_value=20.0, value=0.0, step=0.1)
+SBP = st.number_input("收缩压(SBP):", min_value=0.0, max_value=200.0, value=0.0, step=0.1)
+AST = st.number_input("谷草转氨酶(AST):", min_value=0, max_value=500, value=0, step=1)
+DBP = st.number_input("舒张压(DBP):", min_value=0.0, max_value=200.0, value=0.0, step=0.1)
+BUN = st.number_input("血清尿素氮(BUN):", min_value=0, max_value=50, value=0)
+BMI = st.number_input("体质指数(BMI):", min_value=0, max_value=50, value=0)
 
-# ===================== Streamlit 界面构建 =====================
-def main():
-    # 页面标题与说明
-    st.set_page_config(page_title="动脉硬化预测器", layout="wide")
-    st.title("动脉硬化预测器")
-    st.caption("温馨提示：本工具仅作健康参考，不替代专业医生诊断，请结合临床检查结果判断。")
-    
-    # 安全加载模型
-    model, model_error = load_model_safely(MODEL_PATH)
-    if model_error:
-        st.error(model_error)
-        return
-    
-    # 输入区域（优化：折叠面板+分栏布局，界面更整洁）
-    with st.expander("📝 填写个人信息与检测指标", expanded=True):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # 岗位选择（直接中文，无需数字）
-            selected_job = st.selectbox("岗位：", options=JOB_OPTIONS, index=0)
-            
-            # 输入项1
-            AGE = st.number_input(
-                f"{FEATURE_CONFIG['AGE']['cn_name']}(AGE) {FEATURE_CONFIG['AGE']['unit']}",
-                min_value=FEATURE_CONFIG['AGE']['min'],
-                max_value=FEATURE_CONFIG['AGE']['max'],
-                value=30,
-                step=1 if not FEATURE_CONFIG['AGE']['is_float'] else 0.1
-            )
-            ALB = st.number_input(
-                f"{FEATURE_CONFIG['ALB']['cn_name']}(ALB) {FEATURE_CONFIG['ALB']['unit']}",
-                min_value=FEATURE_CONFIG['ALB']['min'],
-                max_value=FEATURE_CONFIG['ALB']['max'],
-                value=45,
-                step=1 if not FEATURE_CONFIG['ALB']['is_float'] else 0.1
-            )
-            GLO = st.number_input(
-                f"{FEATURE_CONFIG['GLO']['cn_name']}(GLO) {FEATURE_CONFIG['GLO']['unit']}",
-                min_value=FEATURE_CONFIG['GLO']['min'],
-                max_value=FEATURE_CONFIG['GLO']['max'],
-                value=28,
-                step=1 if not FEATURE_CONFIG['GLO']['is_float'] else 0.1
-            )
-            FBG = st.number_input(
-                f"{FEATURE_CONFIG['FBG']['cn_name']}(FBG) {FEATURE_CONFIG['FBG']['unit']}",
-                min_value=FEATURE_CONFIG['FBG']['min'],
-                max_value=FEATURE_CONFIG['FBG']['max'],
-                value=5.0,
-                step=1 if not FEATURE_CONFIG['FBG']['is_float'] else 0.1
-            )
-        
-        with col2:
-            SBP = st.number_input(
-                f"{FEATURE_CONFIG['SBP']['cn_name']}(SBP) {FEATURE_CONFIG['SBP']['unit']}",
-                min_value=FEATURE_CONFIG['SBP']['min'],
-                max_value=FEATURE_CONFIG['SBP']['max'],
-                value=120.0,
-                step=1 if not FEATURE_CONFIG['SBP']['is_float'] else 0.1
-            )
-            AST = st.number_input(
-                f"{FEATURE_CONFIG['AST']['cn_name']}(AST) {FEATURE_CONFIG['AST']['unit']}",
-                min_value=FEATURE_CONFIG['AST']['min'],
-                max_value=FEATURE_CONFIG['AST']['max'],
-                value=30,
-                step=1 if not FEATURE_CONFIG['AST']['is_float'] else 0.1
-            )
-            DBP = st.number_input(
-                f"{FEATURE_CONFIG['DBP']['cn_name']}(DBP) {FEATURE_CONFIG['DBP']['unit']}",
-                min_value=FEATURE_CONFIG['DBP']['min'],
-                max_value=FEATURE_CONFIG['DBP']['max'],
-                value=80.0,
-                step=1 if not FEATURE_CONFIG['DBP']['is_float'] else 0.1
-            )
-            BUN = st.number_input(
-                f"{FEATURE_CONFIG['BUN']['cn_name']}(BUN) {FEATURE_CONFIG['BUN']['unit']}",
-                min_value=FEATURE_CONFIG['BUN']['min'],
-                max_value=FEATURE_CONFIG['BUN']['max'],
-                value=5,
-                step=1 if not FEATURE_CONFIG['BUN']['is_float'] else 0.1
-            )
-            BMI = st.number_input(
-                f"{FEATURE_CONFIG['BMI']['cn_name']}(BMI) {FEATURE_CONFIG['BMI']['unit']}",
-                min_value=FEATURE_CONFIG['BMI']['min'],
-                max_value=FEATURE_CONFIG['BMI']['max'],
-                value=22,
-                step=1 if not FEATURE_CONFIG['BMI']['is_float'] else 0.1
-            )
-    
-    # 整理输入数据
-    feature_values = [AGE, ALB, GLO, FBG, SBP, AST, DBP, BUN, BMI]
-    input_data = dict(zip(FEATURE_NAMES, feature_values))
-    
-    # 预测按钮与逻辑（优化：输入校验+加载状态+异常捕获）
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        predict_btn = st.button("🔍 开始预测", type="primary")
-    with col_btn2:
-        reset_btn = st.button("🔄 重置输入")
-    
-    # 重置功能
-    if reset_btn:
-        st.rerun()
-    
-    if predict_btn:
-        # 第一步：输入合法性校验
-        input_errors = validate_inputs(input_data)
-        if input_errors:
-            st.warning("请修正以下输入异常后再进行预测：")
-            for error in input_errors:
-                st.write(f"• {error}")
-            return
-        
-        # 第二步：数据格式化与准备
-        # 简化小数格式化，针对不同类型指标优化
-        formatted_feature_values = []
-        for val, feat in zip(feature_values, FEATURE_NAMES):
-            if FEATURE_CONFIG[feat]['is_float']:
-                formatted_val = float(Decimal(str(val)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))
-            else:
-                formatted_val = int(val)
-            formatted_feature_values.append(formatted_val)
-        
-        features = np.array([formatted_feature_values], dtype=np.float32)
-        features_df = pd.DataFrame(features, columns=FEATURE_NAMES, dtype=np.float32)
-        
-        # 第三步：模型预测与结果展示（包裹加载状态）
-        with st.spinner("正在进行预测与结果分析，请稍候..."):
-            try:
-                predicted_class = model.predict(features)[0]
-                predicted_proba = model.predict_proba(features)[0]
-                
-                # 优化预测结果展示（直白文字+指标卡片）
-                st.subheader("📊 预测结果")
-                result_col1, result_col2 = st.columns(2)
-                
-                with result_col1:
-                    if predicted_class == 1:
-                        st.metric("预测结论", "有动脉硬化风险", "需关注")
-                        risk_prob = predicted_proba[1] * 100
-                        advice = (
-                            f"根据模型预测，你有较高的动脉硬化风险。\n"
-                            f"模型预测你患有动脉硬化的概率为 {risk_prob:.1f}%。\n"
-                            "💡 建议及时咨询心血管科医生，进行颈动脉超声等进一步检查和专业干预。"
-                        )
-                    else:
-                        st.metric("预测结论", "无明显动脉硬化风险", "状态良好")
-                        safe_prob = predicted_proba[0] * 100
-                        advice = (
-                            f"根据模型预测，你患动脉硬化的风险较低。\n"
-                            f"模型预测你无动脉硬化的概率为 {safe_prob:.1f}%。\n"
-                            "💡 建议保持当前健康的生活方式，并定期进行年度体检，持续监测指标变化。"
-                        )
-                    st.success(advice)
-                
-                with result_col2:
-                    st.metric("预测置信度", f"{max(predicted_proba)*100:.1f}%", "")
-                    proba_df = pd.DataFrame({
-                        "结果类别": ["无动脉硬化", "有动脉硬化"],
-                        "对应概率": [f"{predicted_proba[0]*100:.2f}%", f"{predicted_proba[1]*100:.2f}%"]
-                    })
-                    st.dataframe(proba_df, use_container_width=True)
-                
-                # 第四步：SHAP图生成与展示（优化：简化逻辑，避免裁剪）
-                st.subheader("📈 预测结果解释（SHAP Force Plot）")
-                try:
-                    explainer = shap.TreeExplainer(model)
-                    shap_values = explainer.shap_values(features_df)
-                    if isinstance(shap_values, list) and len(shap_values) == 2:
-                        shap_values = shap_values[1]
-                    
-                    # 生成SHAP图
-                    buf = io.BytesIO()
-                    shap.force_plot(
-                        explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
-                        shap_values[0],
-                        features_df.iloc[0],
-                        feature_names=FEATURE_NAMES,
-                        out_names="动脉硬化患病概率",
-                        show=False,
-                        matplotlib=True
-                    )
-                    plt.tight_layout()
-                    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-                    buf.seek(0)
-                    img = Image.open(buf)
-                    st.image(img, use_column_width=True)
-                    plt.close('all')
-                    
-                    # SHAP图说明
-                    with st.expander("📖 SHAP图解读说明"):
-                        st.write("""
-                        - 🔴 红色特征：该指标数值偏高，**增加**动脉硬化患病概率；
-                        - 🔵 蓝色特征：该指标数值偏低，**降低**动脉硬化患病概率；
-                        - 特征条长度：代表该指标对本次预测结果的影响程度（越长影响越大）；
-                        - 中间数值：模型的基础预测概率，两侧特征共同作用最终得到右侧预测结果。
-                        """)
-                    
-                except Exception as shap_error:
-                    st.warning(f"SHAP图生成失败：{str(shap_error)}")
-                
-                # 第五步：特征缩写对照表
-                st.subheader("📋 特征缩写对照表")
-                abbr_data = [
-                    [feat, FEATURE_CONFIG[feat]['cn_name'], FEATURE_CONFIG[feat]['unit']]
-                    for feat in FEATURE_NAMES
-                ]
-                abbr_df = pd.DataFrame(abbr_data, columns=["英文缩写", "中文含义", "单位"])
-                st.dataframe(abbr_df, use_container_width=True)
-                
-                # 第六步：个性化健康建议（优化：调用封装函数，减少冗余）
-                st.subheader(f"💪 {selected_job} 个性化健康建议")
-                st.caption("根据你的检测指标，生成针对性饮食与生活运动建议：")
-                
-                # 调用封装函数展示各指标建议
-                display_indicator_advice(selected_job, "BMI", BMI, job_advice_dict)
-                display_indicator_advice(selected_job, "ALB", ALB, job_advice_dict)
-                display_indicator_advice(selected_job, "GLO", GLO, job_advice_dict)
-                display_indicator_advice(selected_job, "FBG", FBG, job_advice_dict)
-                display_indicator_advice(selected_job, "AST", AST, job_advice_dict)
-                display_indicator_advice(selected_job, "BUN", BUN, job_advice_dict)
-                
-                # 血压建议（单独处理，非普通指标）
-                st.markdown("### 血压（SBP/DBP）建议")
-                if SBP < 140 and DBP < 90:
-                    st.markdown(job_advice_dict[selected_job]["血压"]["正常"])
-                else:
-                    st.markdown(job_advice_dict[selected_job]["血压"]["偏高"])
-                st.divider()
-                
-            except Exception as predict_error:
-                st.error(f"预测过程出现异常：{str(predict_error)}")
 
-if __name__ == "__main__":
-    main()
+# 处理输入数据（核心：用Decimal精准控制2位小数）
+feature_values = [
+    AGE, ALB, GLO, FBG, SBP, AST, DBP, BUN, BMI
+]  
+# 彻底解决浮点误差：用Decimal保留2位小数
+feature_values = [
+    float(Decimal(str(x)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)) 
+    for x in feature_values
+]
+# 转为numpy数组（供模型预测）
+features = np.array([feature_values], dtype=np.float32)
+
+# 构建两个DataFrame：
+# 1. 模型预测用（数值型，精准）
+features_df = pd.DataFrame(features, columns=feature_names, dtype=np.float32)
+# 2. SHAP显示用（字符串型，格式化后无超长小数）
+formatted_features = {col: f"{val:.2f}" for col, val in zip(feature_names, feature_values)}
+formatted_values = [formatted_features[col] for col in feature_names]
+features_df_display = pd.DataFrame([formatted_values], columns=feature_names)
+
+# 预测逻辑
+if st.button("Predict"):
+    predicted_class = model.predict(features)[0]
+    predicted_proba = model.predict_proba(features)[0]
+
+    # 显示预测结果
+    st.write(f"**预测类别:** {predicted_class} (1: 有动脉硬化, 0: 无动脉硬化)")
+    st.write(f"**预测概率:** {predicted_proba}")
+
+    # 生成风险建议
+    probability = predicted_proba[predicted_class] * 100
+    if predicted_class == 1:
+        advice = (
+            f"根据模型预测，你有较高的动脉硬化风险。"
+            f"模型预测你患有动脉硬化的概率为 {probability:.1f}%。"
+            "建议及时咨询医生，进行进一步检查和干预。"
+        )
+    else:
+        advice = (
+            f"根据模型预测，你患动脉硬化的风险较低。"
+            f"模型预测你无动脉硬化的概率为 {probability:.1f}%。"
+            "建议保持健康的生活方式，并定期进行体检。"
+        )
+    st.write(advice)
+
+
+
+    # ========== SHAP图（使用格式化后的DataFrame，数值显示为2位小数） ==========
+    st.subheader("预测结果解释（SHAP Force Plot）")
+    plt.clf()
+    plt.close('all')
+    
+    # 计算SHAP值（用模型预测用的features_df）
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(features_df)
+    if isinstance(shap_values, list) and len(shap_values) == 2:
+        shap_values = shap_values[1]
+    
+    # 生成SHAP Force Plot（用显示用的features_df_display）
+    shap.force_plot(
+        explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
+        shap_values[0],
+        features_df_display.iloc[0],  # 关键：用格式化后的字符串数值
+        feature_names=feature_names,
+        out_names="Fatty Liver Probability",
+        show=False,
+        matplotlib=True,
+        figsize=(12, 4)
+    )
+    plt.tight_layout()
+    
+    # 保存并显示图片
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+    buf.seek(0)
+    img = Image.open(buf)
+    st.image(img, use_column_width=True)
+    plt.close('all')
+
+    # 特征缩写对照表
+    st.subheader("特征缩写对照表")
+    abbr_map = {
+        "Age": "年龄", 
+        "ALB": "白蛋白",
+        "GLO": "球蛋白", 
+        "FBG": "空腹血糖", 
+        "SBP": "收缩压",   
+        "AST": "谷草转氨酶", 
+        "DBP": "舒张压", 
+        "BUN": "血清尿素氮", 
+        "BMI": "体质指数"
+    }
+    abbr_df = pd.DataFrame({
+        "英文缩写": list(abbr_map.keys()),
+        "中文含义": list(abbr_map.values())
+    })
+    st.dataframe(abbr_df, use_container_width=True)
+    
+    # SHAP图说明
+    st.write("""
+    **SHAP Force Plot说明：**
+    - 红色特征：增加动脉硬化患病概率；
+    - 蓝色特征：降低动脉硬化患病概率；
+    - 特征条长度：对预测结果的影响程度（越长影响越大）。
+    """)
+
+    # ========== 分岗位-分指标个性化建议 ==========
+    st.subheader(f"{job_name_map[job_code]} 个性化健康建议")
+    current_job = job_name_map[job_code]
+    job_advice = job_advice_dict[current_job]
+
+    # 1. BMI建议
+    st.markdown("### 体质指数（BMI）建议")
+    if BMI < 18.5:
+        st.markdown(job_advice["BMI"]["<18.5"])
+    elif 18.5 <= BMI < 24:
+        st.markdown(job_advice["BMI"]["18.5-24"])
+    elif 24 <= BMI < 28:
+        st.markdown(job_advice["BMI"]["24-28"])
+    else:
+        st.markdown(job_advice["BMI"]["≥28"])
+
+    # 2. 白蛋白（ALB）建议
+    st.markdown("### 白蛋白（ALB）建议")
+    if ALB < 40:
+        st.markdown(job_advice["ALB"]["<40"])
+    elif 40 <= ALB <= 55:
+        st.markdown(job_advice["ALB"]["40-55"])
+    else:
+        st.markdown(job_advice["ALB"][">55"])
+
+    # 3. 球蛋白（GLO）建议
+    st.markdown("### 球蛋白（GLO）建议")
+    if GLO < 20:
+        st.markdown(job_advice["GLO"]["<20"])
+    elif 20 <= GLO <= 35:
+        st.markdown(job_advice["GLO"]["20-35"])
+    else:
+        st.markdown(job_advice["GLO"][">35"])
+
+    # 4. 空腹血糖（FBG）建议
+    st.markdown("### 空腹血糖（FBG）建议")
+    if FBG < 6.1:
+        st.markdown(job_advice["FBG"]["<6.1"])
+    elif 6.1 <= FBG < 7.0:
+        st.markdown(job_advice["FBG"]["6.1-7.0"])
+    else:
+        st.markdown(job_advice["FBG"]["≥7.0"])
+
+    # 5. 谷草转氨酶（AST）建议
+    st.markdown("### 谷草转氨酶（AST）建议")
+    if AST <= 40:
+        st.markdown(job_advice["AST"]["≤40"])
+    else:
+        st.markdown(job_advice["AST"][">40"])
+
+    # 6. 尿素氮（BUN）建议
+    st.markdown("### 血清尿素氮（BUN）建议")
+    if BUN < 2.9:
+        st.markdown(job_advice["BUN"]["<2.9"])
+    elif 2.9 <= BUN <= 8.2:
+        st.markdown(job_advice["BUN"]["2.9-8.2"])
+    else:
+        st.markdown(job_advice["BUN"][">8.2"])
+
+    # 7. 血压建议
+    st.markdown("### 血压（SBP/DBP）建议")
+    if SBP < 140 and DBP < 90:
+        st.markdown(job_advice["血压"]["正常"])
+    else:
+        st.markdown(job_advice["血压"]["偏高"])
