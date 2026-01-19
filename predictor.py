@@ -25,39 +25,35 @@ model = joblib.load('GBD.pkl')
 
 # 特征名：医学通用英文缩写
 feature_names = [
-    "Gender", "Age", "BMI", "TG", "LDL-C", 
-    "HDL-C", "ALT", "AST/ALT", "TP", "ALB", 
-    "Scr", "UA", "FBG", "WBC", "LYM#", 
-    "MCH", "PLT"
+    "AGE", "ALB", "GLO", "FPG", "SBP", 
+    "AST", "DBP", "BUN", "BMI"    
 ]
 
 # StreamLit界面（输入框保留中文+英文缩写）
-st.title("脂肪肝预测器")
+st.title("动脉硬化预测器")
 
 # 输入框
-年龄 = st.number_input("年龄(Age):", min_value=0, max_value=120, value=0)
-性别 = st.selectbox("性别(Gender):", options=[0, 1], format_func=lambda x: "男" if x == 1 else "女")
-体质指数 = st.number_input("体质指数(BMI):", min_value=0, max_value=30, value=0)
-甘油三酯 = st.number_input("甘油三酯(TG):", min_value=0.0, max_value=20.0, value=0.0, step=0.1)
-低密度脂蛋白胆固醇 = st.number_input("低密度脂蛋白胆固醇(LDL-C):", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
-高密度脂蛋白胆固醇 = st.number_input("高密度脂蛋白胆固醇(HDL-C):", min_value=0.0, max_value=5.0, value=0.0, step=0.1)
-谷丙转氨酶 = st.number_input("谷丙转氨酶(ALT):", min_value=0, max_value=500, value=0, step=1)
-谷草酶谷丙酶 = st.number_input("谷草酶谷丙酶(AST/ALT):", min_value=0.0, max_value=5.0, value=0.0, step=0.1)
-总蛋白 = st.number_input("总蛋白(TP):", min_value=0, max_value=100, value=0, step=1)
-白蛋白 = st.number_input("白蛋白(ALB):", min_value=0, max_value=70, value=0, step=1)
-血肌酐 = st.number_input("血肌酐(Scr):", min_value=0, max_value=500, value=0, step=1)
-血尿酸 = st.number_input("血尿酸(UA):", min_value=0, max_value=1000, value=0, step=1)
-空腹血糖 = st.number_input("空腹血糖(FBG):", min_value=0.0, max_value=20.0, value=0.0, step=0.1)
-白细胞 = st.number_input("白细胞(WBC):", min_value=0.0, max_value=30.0, value=0.0, step=0.1)
-淋巴细胞计数 = st.number_input("淋巴细胞计数(LYM#):", min_value=0.0, max_value=10.0, value=0.0, step=0.1)
-平均血红蛋白 = st.number_input("平均血红蛋白(MCH):", min_value=0, max_value=50, value=0, step=1)
-血小板 = st.number_input("血小板(PLT):", min_value=0, max_value=1000, value=0, step=1)
+岗位 = st.selectbox("岗位：", options=[0, 1, 2, 3, 4], format_func=lambda x: {
+        0: "机务人员",
+        1: "车务人员",
+        2: "电务供电人员",
+        3: "工务人员",
+        4: "行政及其他人员"
+    }[x])
+AGE = st.number_input("年龄(Age):", min_value=0, max_value=120, value=0)
+ALB = st.number_input("白蛋白(ALB):", min_value=0, max_value=70, value=0, step=1)
+GLO = st.number_input("球蛋白(GLO):", min_value=0, max_value=70, value=0, step=1)
+FBG = st.number_input("空腹血糖(FBG):", min_value=0.0, max_value=20.0, value=0.0, step=0.1)
+SBP = st.number_input("收缩压(SBP):", min_value=0.0, max_value=200.0, value=0.0, step=0.1)
+AST = st.number_input("谷草转氨酶(AST):", min_value=0, max_value=500, value=0, step=1)
+DBP = st.number_input("收缩压(DBP):", min_value=0.0, max_value=200.0, value=0.0, step=0.1)
+BUN = st.number_input("血清尿素氮(BUN):", min_value=0, max_value=50, value=0)
+BMI = st.number_input("体质指数(BMI):", min_value=0, max_value=50, value=0)
+
 
 # 处理输入数据（核心：用Decimal精准控制2位小数）
 feature_values = [
-    性别,年龄,体质指数,甘油三酯,低密度脂蛋白胆固醇,高密度脂蛋白胆固醇,
-    谷丙转氨酶,谷草酶谷丙酶,总蛋白,白蛋白,血肌酐,血尿酸,空腹血糖,
-    白细胞,淋巴细胞计数,平均血红蛋白,血小板
+    AGE, ALB, GLO, FBG, SBP, AST, DBP, BUN, BMI
 ]  
 # 彻底解决浮点误差：用Decimal保留2位小数
 feature_values = [
@@ -88,14 +84,14 @@ if st.button("Predict"):
     probability = predicted_proba[predicted_class] * 100
     if predicted_class == 1:
         advice = (
-            f"根据模型预测，你有较高的脂肪肝风险。"
-            f"模型预测你患脂肪肝的概率为 {probability:.1f}%。"
+            f"根据模型预测，你有较高的动脉硬化风险。"
+            f"模型预测你患有动脉硬化的概率为 {probability:.1f}%。"
             "建议及时咨询医生，进行进一步检查和干预。"
         )
     else:
         advice = (
-            f"根据模型预测，你患脂肪肝的风险较低。"
-            f"模型预测你无脂肪肝的概率为 {probability:.1f}%。"
+            f"根据模型预测，你患动脉硬化的风险较低。"
+            f"模型预测你无动脉硬化的概率为 {probability:.1f}%。"
             "建议保持健康的生活方式，并定期进行体检。"
         )
     st.write(advice)
@@ -135,12 +131,15 @@ if st.button("Predict"):
     # 特征缩写对照表
     st.subheader("特征缩写对照表")
     abbr_map = {
-        "Gender": "性别", "Age": "年龄", "BMI": "体质指数", "TG": "甘油三酯", 
-        "LDL-C": "低密度脂蛋白胆固醇", "HDL-C": "高密度脂蛋白胆固醇", 
-        "ALT": "谷丙转氨酶", "AST/ALT": "谷草酶谷丙酶", "TP": "总蛋白", 
-        "ALB": "白蛋白", "Scr": "血肌酐", "UA": "血尿酸", "FBG": "空腹血糖", 
-        "WBC": "白细胞", "LYM#": "淋巴细胞计数", "MCH": "平均血红蛋白", 
-        "PLT": "血小板"
+        "Age": "年龄", 
+        "ALB": "白蛋白",
+        "GLO": "球蛋白", 
+        "FBG": "空腹血糖", 
+        "SBP": "收缩压",   
+        "AST": "谷草转氨酶", 
+        "DBP": "舒张压", 
+        "BUN": "血清尿素氮", 
+        "BMI": "体质指数"
     }
     abbr_df = pd.DataFrame({
         "英文缩写": list(abbr_map.keys()),
