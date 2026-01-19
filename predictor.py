@@ -27,15 +27,15 @@ MODEL_PATH = 'GBD.pkl'
 
 # 特征配置（包含名称、中文含义、单位，方便后续扩展）
 FEATURE_CONFIG = {
-    "AGE": {"cn_name": "年龄", "unit": "", "min": 18, "max": 120, "is_float": False},
-    "ALB": {"cn_name": "白蛋白", "unit": "g/L", "min": 20, "max": 70, "is_float": False},
-    "GLO": {"cn_name": "球蛋白", "unit": "g/L", "min": 10, "max": 70, "is_float": False},
-    "FBG": {"cn_name": "空腹血糖", "unit": "mmol/L", "min": 2.0, "max": 20.0, "is_float": True},
-    "SBP": {"cn_name": "收缩压", "unit": "mmHg", "min": 60.0, "max": 200.0, "is_float": True},
-    "AST": {"cn_name": "谷草转氨酶", "unit": "U/L", "min": 0, "max": 500, "is_float": False},
-    "DBP": {"cn_name": "舒张压", "unit": "mmHg", "min": 40.0, "max": 120.0, "is_float": True},
-    "BUN": {"cn_name": "血清尿素氮", "unit": "mmol/L", "min": 1, "max": 50, "is_float": False},
-    "BMI": {"cn_name": "体质指数", "unit": "", "min": 10, "max": 50, "is_float": False}
+    "AGE": {"cn_name": "年龄", "unit": "", "min": 0, "max": float('inf'), "is_float": False, "default": 0},
+    "ALB": {"cn_name": "白蛋白", "unit": "g/L", "min": 0, "max": float('inf'), "is_float": False, "default": 0},
+    "GLO": {"cn_name": "球蛋白", "unit": "g/L", "min": 0, "max": float('inf'), "is_float": False, "default": 0},
+    "FBG": {"cn_name": "空腹血糖", "unit": "mmol/L", "min": 0, "max": float('inf'), "is_float": True, "default": 0},
+    "SBP": {"cn_name": "收缩压", "unit": "mmHg", "min": 0, "max": float('inf'), "is_float": True, "default": 0},
+    "AST": {"cn_name": "谷草转氨酶", "unit": "U/L", "min": 0, "max": float('inf'), "is_float": False, "default": 0},
+    "DBP": {"cn_name": "舒张压", "unit": "mmHg", "min": 0, "max": float('inf'), "is_float": True, "default": 0},
+    "BUN": {"cn_name": "血清尿素氮", "unit": "mmol/L", "min": 0, "max": float('inf'), "is_float": False, "default": 0},
+    "BMI": {"cn_name": "体质指数", "unit": "", "min": 0, "max": float('inf'), "is_float": False, "default": 0}
 }
 FEATURE_NAMES = list(FEATURE_CONFIG.keys())
 
