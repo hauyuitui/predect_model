@@ -483,6 +483,67 @@ if st.button("Predict"):
         )
     st.write(advice)
 
+
+
+    # ========== SHAP图（使用格式化后的DataFrame，数值显示为2位小数） ==========
+    st.subheader("预测结果解释（SHAP Force Plot）")
+    plt.clf()
+    plt.close('all')
+    
+    # 计算SHAP值（用模型预测用的features_df）
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(features_df)
+    if isinstance(shap_values, list) and len(shap_values) == 2:
+        shap_values = shap_values[1]
+    
+    # 生成SHAP Force Plot（用显示用的features_df_display）
+    shap.force_plot(
+        explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
+        shap_values[0],
+        features_df_display.iloc[0],  # 关键：用格式化后的字符串数值
+        feature_names=feature_names,
+        out_names="Fatty Liver Probability",
+        show=False,
+        matplotlib=True,
+        figsize=(12, 4)
+    )
+    plt.tight_layout()
+    
+    # 保存并显示图片
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+    buf.seek(0)
+    img = Image.open(buf)
+    st.image(img, use_column_width=True)
+    plt.close('all')
+
+    # 特征缩写对照表
+    st.subheader("特征缩写对照表")
+    abbr_map = {
+        "Age": "年龄", 
+        "ALB": "白蛋白",
+        "GLO": "球蛋白", 
+        "FBG": "空腹血糖", 
+        "SBP": "收缩压",   
+        "AST": "谷草转氨酶", 
+        "DBP": "舒张压", 
+        "BUN": "血清尿素氮", 
+        "BMI": "体质指数"
+    }
+    abbr_df = pd.DataFrame({
+        "英文缩写": list(abbr_map.keys()),
+        "中文含义": list(abbr_map.values())
+    })
+    st.dataframe(abbr_df, use_container_width=True)
+    
+    # SHAP图说明
+    st.write("""
+    **SHAP Force Plot说明：**
+    - 红色特征：增加动脉硬化患病概率；
+    - 蓝色特征：降低动脉硬化患病概率；
+    - 特征条长度：对预测结果的影响程度（越长影响越大）。
+    """)
+
     # ========== 分岗位-分指标个性化建议 ==========
     st.subheader(f"📋 {job_name_map[job_code]} 个性化健康建议")
     current_job = job_name_map[job_code]
@@ -548,63 +609,3 @@ if st.button("Predict"):
         st.markdown(job_advice["血压"]["正常"])
     else:
         st.markdown(job_advice["血压"]["偏高"])
-
-    # ========== SHAP图（使用格式化后的DataFrame，数值显示为2位小数） ==========
-    st.subheader("预测结果解释（SHAP Force Plot）")
-    plt.clf()
-    plt.close('all')
-    
-    # 计算SHAP值（用模型预测用的features_df）
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(features_df)
-    if isinstance(shap_values, list) and len(shap_values) == 2:
-        shap_values = shap_values[1]
-    
-    # 生成SHAP Force Plot（用显示用的features_df_display）
-    shap.force_plot(
-        explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
-        shap_values[0],
-        features_df_display.iloc[0],  # 关键：用格式化后的字符串数值
-        feature_names=feature_names,
-        out_names="Fatty Liver Probability",
-        show=False,
-        matplotlib=True,
-        figsize=(12, 4)
-    )
-    plt.tight_layout()
-    
-    # 保存并显示图片
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
-    buf.seek(0)
-    img = Image.open(buf)
-    st.image(img, use_column_width=True)
-    plt.close('all')
-    
-    # 特征缩写对照表
-    st.subheader("特征缩写对照表")
-    abbr_map = {
-        "Age": "年龄", 
-        "ALB": "白蛋白",
-        "GLO": "球蛋白", 
-        "FBG": "空腹血糖", 
-        "SBP": "收缩压",   
-        "AST": "谷草转氨酶", 
-        "DBP": "舒张压", 
-        "BUN": "血清尿素氮", 
-        "BMI": "体质指数"
-    }
-    abbr_df = pd.DataFrame({
-        "英文缩写": list(abbr_map.keys()),
-        "中文含义": list(abbr_map.values())
-    })
-    st.dataframe(abbr_df, use_container_width=True)
-    
-    # SHAP图说明
-    st.write("""
-    **SHAP Force Plot说明：**
-    - 红色特征：增加动脉硬化患病概率；
-    - 蓝色特征：降低动脉硬化患病概率；
-    - 特征条长度：对预测结果的影响程度（越长影响越大）。
-    """)
-
