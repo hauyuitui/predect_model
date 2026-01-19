@@ -545,12 +545,12 @@ if st.button("Predict"):
     """)
 
     # ========== 分岗位-分指标个性化建议 ==========
-    st.subheader(f"📋 {job_name_map[job_code]} 个性化健康建议")
+    st.subheader(f"{job_name_map[job_code]} 个性化健康建议")
     current_job = job_name_map[job_code]
     job_advice = job_advice_dict[current_job]
 
     # 1. BMI建议
-    st.markdown("### 📊 体质指数（BMI）建议")
+    st.markdown("### 体质指数（BMI）建议")
     if BMI < 18.5:
         st.markdown(job_advice["BMI"]["<18.5"])
     elif 18.5 <= BMI < 24:
@@ -561,7 +561,7 @@ if st.button("Predict"):
         st.markdown(job_advice["BMI"]["≥28"])
 
     # 2. 白蛋白（ALB）建议
-    st.markdown("### 🩸 白蛋白（ALB）建议")
+    st.markdown("### 白蛋白（ALB）建议")
     if ALB < 40:
         st.markdown(job_advice["ALB"]["<40"])
     elif 40 <= ALB <= 55:
@@ -570,7 +570,7 @@ if st.button("Predict"):
         st.markdown(job_advice["ALB"][">55"])
 
     # 3. 球蛋白（GLO）建议
-    st.markdown("### 🛡️ 球蛋白（GLO）建议")
+    st.markdown("### 球蛋白（GLO）建议")
     if GLO < 20:
         st.markdown(job_advice["GLO"]["<20"])
     elif 20 <= GLO <= 35:
@@ -579,7 +579,7 @@ if st.button("Predict"):
         st.markdown(job_advice["GLO"][">35"])
 
     # 4. 空腹血糖（FBG）建议
-    st.markdown("### 🍬 空腹血糖（FBG）建议")
+    st.markdown("### 空腹血糖（FBG）建议")
     if FBG < 6.1:
         st.markdown(job_advice["FBG"]["<6.1"])
     elif 6.1 <= FBG < 7.0:
@@ -588,14 +588,14 @@ if st.button("Predict"):
         st.markdown(job_advice["FBG"]["≥7.0"])
 
     # 5. 谷草转氨酶（AST）建议
-    st.markdown("### 肝 谷草转氨酶（AST）建议")
+    st.markdown("### 谷草转氨酶（AST）建议")
     if AST <= 40:
         st.markdown(job_advice["AST"]["≤40"])
     else:
         st.markdown(job_advice["AST"][">40"])
 
     # 6. 尿素氮（BUN）建议
-    st.markdown("### 🧪 血清尿素氮（BUN）建议")
+    st.markdown("### 血清尿素氮（BUN）建议")
     if BUN < 2.9:
         st.markdown(job_advice["BUN"]["<2.9"])
     elif 2.9 <= BUN <= 8.2:
@@ -604,7 +604,7 @@ if st.button("Predict"):
         st.markdown(job_advice["BUN"][">8.2"])
 
     # 7. 血压建议
-    st.markdown("### 🩺 血压（SBP/DBP）建议")
+    st.markdown("### 血压（SBP/DBP）建议")
     if SBP < 140 and DBP < 90:
         st.markdown(job_advice["血压"]["正常"])
     else:
