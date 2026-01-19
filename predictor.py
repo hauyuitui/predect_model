@@ -21,7 +21,7 @@ plt.rcParams['figure.dpi'] = 150
 plt.rcParams['savefig.dpi'] = 150
 
 # 加载模型
-model = joblib.load('XGB.pkl')
+model = joblib.load('GBD.pkl')
 
 # 特征名：医学通用英文缩写
 feature_names = [
