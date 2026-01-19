@@ -46,7 +46,7 @@ GLO = st.number_input("球蛋白(GLO):", min_value=0, max_value=70, value=0, ste
 FBG = st.number_input("空腹血糖(FBG):", min_value=0.0, max_value=20.0, value=0.0, step=0.1)
 SBP = st.number_input("收缩压(SBP):", min_value=0.0, max_value=200.0, value=0.0, step=0.1)
 AST = st.number_input("谷草转氨酶(AST):", min_value=0, max_value=500, value=0, step=1)
-DBP = st.number_input("收缩压(DBP):", min_value=0.0, max_value=200.0, value=0.0, step=0.1)
+DBP = st.number_input("舒张压(DBP):", min_value=0.0, max_value=200.0, value=0.0, step=0.1)
 BUN = st.number_input("血清尿素氮(BUN):", min_value=0, max_value=50, value=0)
 BMI = st.number_input("体质指数(BMI):", min_value=0, max_value=50, value=0)
 
@@ -77,7 +77,7 @@ if st.button("Predict"):
     predicted_proba = model.predict_proba(features)[0]
 
     # 显示预测结果
-    st.write(f"**预测类别:** {predicted_class} (1: 有脂肪肝, 0: 无脂肪肝)")
+    st.write(f"**预测类别:** {predicted_class} (1: 有动脉硬化, 0: 无动脉硬化)")
     st.write(f"**预测概率:** {predicted_proba}")
 
     # 生成建议
@@ -150,8 +150,8 @@ if st.button("Predict"):
     # SHAP图说明
     st.write("""
     **SHAP Force Plot说明：**
-    - Red features: Increase the probability of fatty liver (红色特征：增加脂肪肝概率)；
-    - Blue features: Decrease the probability of fatty liver (蓝色特征：降低脂肪肝概率)；
-    - Feature bar length: The degree of impact on prediction results (特征条长度：对预测结果的影响程度)。
+    - 红色特征：增加动脉硬化患病概率；
+    - 蓝色特征：降低动脉硬化患病概率；
+    - 特征条长度：对预测结果的影响程度（越长影响越大）。
     """)
 
